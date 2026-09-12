@@ -1,0 +1,16 @@
+[project]
+name = "recordkeeper"
+version = "0.1.0"
+description = "Local-first music management and backups"
+requires-python = ">=3.11"
+dependencies = ["pylast>=7.1,<8"]
+[dependency-groups]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
+[project.scripts]
+recordkeeper = "recordkeeper.cli:main"
+[tool.ruff.lint]
+select = ["E4", "E7", "E9", "F", "I"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
