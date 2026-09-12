@@ -110,3 +110,17 @@ The Plex server is `wopr` (`172.16.1.5:32400`); account credentials (`base_url`,
 so `172.16.1.5:32400/tcp` must be allowed outbound for this job (same as the
 `172.16.1.5:22` allow already on teletraan-1).
 
+## Vinyl scrobble
+
+`recordkeeper vinyl-sync` detects albums newly added to the Plex "Music" section
+(the vinyls directory), estimates a listening session ending at the album's
+`added_at` (track *i* starts at `added_at - (total - cumulative_before_i)`), and
+scrobbles each track via `network.scrobble`. Timestamps are explicitly
+estimates. Albums older than Last.fm's 14-day scrobble window are baselined
+(`status='skipped'`), never scrobbled with a misleading time. Preview (default)
+reports the detection without writing; `--apply` scrobbles `new` imports, marking
+per-track progress in `vinyl_import_tracks.scrobbled` and the write in
+`sync_ledger` (`task_type='vinyl_scrobble'`, per-account unique). The first run
+baselined all 250 existing albums (historical). `recordkeeper-vinyl-sync.timer`
+runs `--apply` daily at 04:00 UTC.
+
