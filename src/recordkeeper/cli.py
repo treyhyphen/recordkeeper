@@ -33,6 +33,7 @@ from .plex import sync_inventory
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
+from .vinyl import detect_imports, scrobble_imports
 
 
 def _spotify_client(acct, directory: Path) -> Spotify:
@@ -123,6 +124,15 @@ def main():
     plex_inventory.add_argument("--user", default=None, help="Plex account username")
     plex_inventory.add_argument(
         "--section", default=None, help="limit to one library section title"
+    )
+    vinyl_sync = commands.add_parser(
+        "vinyl-sync",
+        help="detect + scrobble vinyl imports (preview by default)",
+    )
+    vinyl_sync.add_argument("--section", default=None, help="Plex music section title")
+    vinyl_sync.add_argument("--apply", action="store_true", help="perform scrobbles")
+    vinyl_sync.add_argument(
+        "--limit", type=int, default=None, help="cap imports (testing)"
     )
 
     args = parser.parse_args()
@@ -283,6 +293,30 @@ def main():
             with db_connect(config.database_url) as conn:
                 stats = sync_inventory(conn, plex, section_title=args.section)
                 print(f"{acct.username}: {stats}")
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "vinyl-sync":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        plex_acct = select_plex_account(accounts, None)
+        lastfm_acct = select_lastfm_account(accounts, None)
+        try:
+            plex = plex_connect(
+                plex_acct.credential("base_url"), plex_acct.credential("token")
+            )
+            network = build_network(lastfm_acct, str(directory))
+            with db_connect(config.database_url) as conn:
+                ids = ensure_accounts(conn, accounts)
+                lastfm_id = ids[(lastfm_acct.platform, lastfm_acct.username)]
+                detected = detect_imports(conn, plex, section_title=args.section)
+                print(f"detected: {detected}")
+                result = scrobble_imports(
+                    conn, lastfm_id, network, dry_run=not args.apply, limit=args.limit
+                )
+                mode = "preview" if not args.apply else "applied"
+                print(f"({mode}): {result}")
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return
