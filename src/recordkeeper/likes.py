@@ -204,8 +204,11 @@ def sync_loves(
                 (lastfm_account_id, TASK, source, target, str(exc)[:500]),
             )
             print(f"  FAILED {artist} — {resolved}: {exc}")
+        if not dry_run:
+            # Commit per track so a long backfill is durable and resumable:
+            # an interruption rolls back only the in-flight track, never hours
+            # of already-synced work.
+            conn.commit()
         time.sleep(delay)
 
-    if not dry_run:
-        conn.commit()
     return {"candidates": loved, "corrected": corrected, "failed": failed}
