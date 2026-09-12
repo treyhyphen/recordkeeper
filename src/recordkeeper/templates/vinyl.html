@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Vinyl{% endblock %}
+{% block content %}
+<h1>Vinyl imports</h1>
+<div class="panel">
+  <table>
+    <thead><tr><th>Artist</th><th>Album</th><th class="num">Tracks</th><th>Status</th><th>Detected</th></tr></thead>
+    <tbody>
+      {% for v in rows %}
+      <tr>
+        <td>{{ v.artist or '—' }}</td>
+        <td>{{ v.album or '—' }}</td>
+        <td class="num">{{ v.track_count }}</td>
+        <td><span class="badge badge-{{ v.status }}">{{ v.status }}</span></td>
+        <td class="muted mono">{{ v.detected_at|dt }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

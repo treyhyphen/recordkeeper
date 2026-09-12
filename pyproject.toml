@@ -8,9 +8,12 @@ dependencies = [
     "psycopg[binary]>=3.2,<4",
     "spotipy>=2.26.0",
     "plexapi>=4.18.2",
+    "fastapi>=0.141.1",
+    "jinja2>=3.1.6",
+    "uvicorn>=0.34",
 ]
 [dependency-groups]
-dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
+dev = ["pytest>=8,<10", "ruff>=0.12,<1", "httpx>=0.28"]
 [project.scripts]
 recordkeeper = "recordkeeper.cli:main"
 [tool.ruff.lint]

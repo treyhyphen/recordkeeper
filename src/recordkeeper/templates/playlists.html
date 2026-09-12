@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Playlists{% endblock %}
+{% block content %}
+<h1>Playlists</h1>
+<div class="panel">
+  <table>
+    <thead><tr><th>Name</th><th>Owner</th><th>Tracks</th><th>Public</th><th class="mono">Snapshot</th></tr></thead>
+    <tbody>
+      {% for p in rows %}
+      <tr>
+        <td>{{ p.name }}</td>
+        <td class="muted">{{ p.owner_name or '—' }}</td>
+        <td class="num">{{ p.track_count }}</td>
+        <td>
+          {% if p.is_public %}<span class="dot dot-green"></span>{% else %}<span class="dot dot-gray"></span>{% endif %}
+        </td>
+        <td class="mono muted">{{ p.snapshot_id or '—' }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

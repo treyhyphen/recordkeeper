@@ -171,6 +171,9 @@ def main():
         "--min-plays", type=int, default=10, help="minimum plays to qualify"
     )
     support.add_argument("--limit", type=int, default=50, help="number of suggestions")
+    serve = commands.add_parser("serve", help="run the read-only web UI")
+    serve.add_argument("--host", default="127.0.0.1", help="bind host")
+    serve.add_argument("--port", type=int, default=8000, help="bind port")
 
     args = parser.parse_args()
 
@@ -179,6 +182,12 @@ def main():
             parser.exit(1, "DATABASE_URL is not configured\n")
         applied = migrate(config.database_url)
         print("applied migrations:", applied or "none (already up to date)")
+        return
+
+    if args.command == "serve":
+        import uvicorn
+
+        uvicorn.run("recordkeeper.web:app", host=args.host, port=args.port)
         return
 
     directory = Path(args.data)

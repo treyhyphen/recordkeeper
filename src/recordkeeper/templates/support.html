@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Support artists{% endblock %}
+{% block content %}
+<h1>Support these artists</h1>
+<div class="panel">
+  <table>
+    <thead><tr><th>Artist</th><th class="num">Score</th><th>Status</th><th>Reason</th></tr></thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <td>{{ r.name }}</td>
+        <td class="num">{{ r.score }}</td>
+        <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
+        <td class="muted">{{ r.reason }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

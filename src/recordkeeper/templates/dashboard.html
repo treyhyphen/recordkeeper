@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Dashboard{% endblock %}
+{% block content %}
+<h1>Dashboard</h1>
+
+<div class="cards">
+  <div class="card"><div class="value">{{ counts.scrobbles }}</div><div class="label">Scrobbles</div></div>
+  <div class="card"><div class="value">{{ counts.artists }}</div><div class="label">Artists</div></div>
+  <div class="card"><div class="value">{{ counts.tracks }}</div><div class="label">Tracks</div></div>
+  <div class="card"><div class="value">{{ counts.playlists }}</div><div class="label">Playlists</div></div>
+  <div class="card"><div class="value">{{ counts.saved_tracks }}</div><div class="label">Saved tracks</div></div>
+  <div class="card"><div class="value">{{ counts.loved_tracks }}</div><div class="label">Loved tracks</div></div>
+  <div class="card"><div class="value">{{ counts.vinyl_imports }}</div><div class="label">Vinyl imports</div></div>
+  <div class="card"><div class="value">{{ counts.recommendations }}</div><div class="label">Recommendations</div></div>
+  <div class="card"><div class="value">{{ counts.plex_artists }}</div><div class="label">Plex artists</div></div>
+  <div class="card"><div class="value">{{ counts.plex_albums }}</div><div class="label">Plex albums</div></div>
+  <div class="card"><div class="value">{{ counts.plex_tracks }}</div><div class="label">Plex tracks</div></div>
+</div>
+
+<div class="two-col">
+  <div>
+    <h2>Top artists</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Artist</th><th class="num">Plays</th><th>Last played</th></tr></thead>
+        <tbody>
+          {% for a in top %}
+          <tr><td>{{ a.artist_name }}</td><td class="num">{{ a.plays }}</td><td class="muted">{{ a.last_played|dt }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div>
+    <h2>Recent scrobbles</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Artist</th><th>Track</th><th>Played</th></tr></thead>
+        <tbody>
+          {% for s in recent %}
+          <tr><td>{{ s.artist_name }}</td><td>{{ s.track_name }}</td><td class="muted mono">{{ s.played_at|dt }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

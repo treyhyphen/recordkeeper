@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Recordkeeper{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="brand">RECORDKEEPER</div>
+      <div class="brand-sub">your music, accounted for</div>
+      <nav>
+        {% for label, href in nav %}
+        <a href="{{ href }}" class="nav-link {% if label == active %}active{% endif %}">
+          <span class="nav-dot"></span>{{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+      <div class="sidebar-foot">
+        <span class="dot dot-green"></span> local
+      </div>
+    </aside>
+    <main class="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</body>
+</html>

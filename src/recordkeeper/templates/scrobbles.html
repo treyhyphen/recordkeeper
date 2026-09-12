@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Scrobbles{% endblock %}
+{% block content %}
+<h1>Scrobbles</h1>
+
+<div class="two-col">
+  <div>
+    <h2>Top artists</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Artist</th><th class="num">Plays</th><th>Last played</th></tr></thead>
+        <tbody>
+          {% for a in top %}
+          <tr><td>{{ a.artist_name }}</td><td class="num">{{ a.plays }}</td><td class="muted">{{ a.last_played|dt }}</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div>
+    <h2>Recent</h2>
+    <div class="panel">
+      <table>
+        <thead><tr><th>Artist</th><th>Track</th><th>Album</th><th>Played</th><th>Src</th></tr></thead>
+        <tbody>
+          {% for s in recent %}
+          <tr>
+            <td>{{ s.artist_name }}</td>
+            <td>{{ s.track_name }}</td>
+            <td class="muted">{{ s.album_name or '—' }}</td>
+            <td class="muted mono">{{ s.played_at|dt }}</td>
+            <td class="mono muted">{{ s.source }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
