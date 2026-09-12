@@ -33,7 +33,7 @@ from .plex import sync_inventory
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
-from .throwback import sync_throwback
+from .throwback import load_playlist_id, save_playlist_id, sync_throwback
 from .vinyl import detect_imports, scrobble_imports
 
 
@@ -360,7 +360,12 @@ def main():
                         limit=args.limit,
                         dry_run=not args.apply,
                         public=args.public,
+                        playlist_id=load_playlist_id(directory, acct.username),
                     )
+                    if args.apply and result["playlist_id"]:
+                        save_playlist_id(
+                            directory, acct.username, result["playlist_id"]
+                        )
                     mode = "preview" if not args.apply else "applied"
                     print(
                         f"({mode}) candidates={len(result['candidates'])} "

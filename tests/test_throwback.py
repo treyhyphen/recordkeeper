@@ -2,8 +2,9 @@
 
 from recordkeeper.throwback import (
     PLAYLIST_NAME,
-    find_playlist,
+    load_playlist_id,
     resolve_uris,
+    save_playlist_id,
     select_candidates,
     sync_throwback,
 )
@@ -31,6 +32,9 @@ class _Conn:
         self.last_sql = sql
         self.last_params = params
         return _Res(fetchall=self.rows)
+
+
+_ROW = {"artist_name": "A", "track_name": "B", "last_played": "2026-01-01", "plays": 5}
 
 
 def test_select_candidates_groups_and_filters():
@@ -65,18 +69,10 @@ def test_resolve_uris_skips_missing():
     assert resolve_uris(_Client(), rows, delay=0) == ["spotify:track:abc"]
 
 
-def test_find_playlist_matches_by_name():
-    class _Client:
-        def current_user_playlists(self, limit=50, offset=0):
-            return {
-                "items": [
-                    {"name": "Other", "id": "plOther"},
-                    {"name": PLAYLIST_NAME, "id": "plX"},
-                ],
-                "next": None,
-            }
-
-    assert find_playlist(_Client()) == "plX"
+def test_playlist_id_roundtrip(tmp_path):
+    assert load_playlist_id(tmp_path, "missing") is None
+    save_playlist_id(tmp_path, "u1", "pl123")
+    assert load_playlist_id(tmp_path, "u1") == "pl123"
 
 
 def test_sync_throwback_dry_run_does_not_write():
@@ -84,29 +80,17 @@ def test_sync_throwback_dry_run_does_not_write():
         def search(self, q=None, type=None, limit=None):
             return {"tracks": {"items": [{"uri": "spotify:track:abc"}]}}
 
-        def current_user_playlists(self, limit=50, offset=0):
-            return {"items": [], "next": None}
-
         def playlist_replace_items(self, *a, **kw):
             raise AssertionError("should not write in dry-run")
 
-    conn = _Conn(
-        [
-            {
-                "artist_name": "A",
-                "track_name": "B",
-                "last_played": "2026-01-01",
-                "plays": 5,
-            }
-        ]
-    )
+    conn = _Conn([_ROW])
     result = sync_throwback(conn, 7, _Client(), dry_run=True)
     assert result["resolved"] == 1
     assert result["replaced"] == 0
     assert result["created"] is False
 
 
-def test_sync_throwback_apply_creates_and_replaces():
+def test_sync_throwback_apply_creates_when_no_id():
     class _Client:
         def __init__(self):
             self.created_args = None
@@ -114,9 +98,6 @@ def test_sync_throwback_apply_creates_and_replaces():
 
         def search(self, q=None, type=None, limit=None):
             return {"tracks": {"items": [{"uri": "spotify:track:abc"}]}}
-
-        def current_user_playlists(self, limit=50, offset=0):
-            return {"items": [], "next": None}
 
         def me(self):
             return {"id": "u1"}
@@ -128,16 +109,7 @@ def test_sync_throwback_apply_creates_and_replaces():
         def playlist_replace_items(self, playlist_id, uris):
             self.replaced_args = (playlist_id, uris)
 
-    conn = _Conn(
-        [
-            {
-                "artist_name": "A",
-                "track_name": "B",
-                "last_played": "2026-01-01",
-                "plays": 5,
-            }
-        ]
-    )
+    conn = _Conn([_ROW])
     client = _Client()
     result = sync_throwback(conn, 7, client, dry_run=False)
     assert result["created"] is True
@@ -145,3 +117,25 @@ def test_sync_throwback_apply_creates_and_replaces():
     assert result["playlist_id"] == "pl1"
     assert client.created_args[1] == PLAYLIST_NAME
     assert client.replaced_args == ("pl1", ["spotify:track:abc"])
+
+
+def test_sync_throwback_apply_reuses_existing_id():
+    class _Client:
+        def __init__(self):
+            self.replaced_args = None
+
+        def search(self, q=None, type=None, limit=None):
+            return {"tracks": {"items": [{"uri": "spotify:track:abc"}]}}
+
+        def user_playlist_create(self, *a, **kw):
+            raise AssertionError("should not create when id is provided")
+
+        def playlist_replace_items(self, playlist_id, uris):
+            self.replaced_args = (playlist_id, uris)
+
+    conn = _Conn([_ROW])
+    client = _Client()
+    result = sync_throwback(conn, 7, client, dry_run=False, playlist_id="pl-existing")
+    assert result["created"] is False
+    assert result["playlist_id"] == "pl-existing"
+    assert client.replaced_args[0] == "pl-existing"
