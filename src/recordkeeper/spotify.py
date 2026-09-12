@@ -53,8 +53,8 @@ class Spotify:
         return self.oauth.get_authorize_url()
 
     def complete_auth(self, redirect_url: str) -> dict:
-        code = self.oauth.parse_auth_response_url(redirect_url)
-        return self.oauth.get_access_token(code, as_dict=True)
+        _state, code = self.oauth.parse_auth_response_url(redirect_url)
+        return self.oauth.get_access_token(code)
 
     def authorized(self) -> bool:
         return self.oauth.get_cached_token() is not None
