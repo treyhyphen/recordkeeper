@@ -9,16 +9,21 @@ preserved. Saved tracks are upserted per account.
 from __future__ import annotations
 
 import json
+import time
 
 from spotipy.exceptions import SpotifyException
 
 
-def paginate(client, first: dict):
-    """Yield each page, following Spotify's `next` cursor."""
+def paginate(client, first: dict, delay: float = 0.0):
+    """Yield each page, following Spotify's `next` cursor, throttled by `delay`."""
     results = first
     while results:
         yield results
-        results = client.next(results) if results.get("next") else None
+        if not results.get("next"):
+            return
+        if delay:
+            time.sleep(delay)
+        results = client.next(results)
 
 
 def extract_track(track: dict | None) -> dict | None:
@@ -98,17 +103,18 @@ def _upsert_playlist(conn, account_id: int, item: dict) -> tuple[int, bool]:
     return existing["id"], existing["snapshot_id"] != snapshot_id
 
 
-def snapshot_playlists(conn, account_id: int, client) -> dict:
+def snapshot_playlists(conn, account_id: int, client, delay: float = 0.2) -> dict:
     """Versioned backup of every playlist the account can see.
 
     Playlist metadata is stored for every visible playlist, but item contents
     are only fetched for playlists the account owns or collaborates on; Spotify
     returns 403 for followed playlists owned by others (a 2026 policy), which
-    are skipped rather than aborting the run.
+    are skipped rather than aborting the run. `delay` throttles requests to stay
+    within Spotify's rate limits.
     """
     stats = {"playlists": 0, "snapshots": 0, "items": 0, "skipped_items": 0}
     first = client.current_user_playlists(limit=50, offset=0)
-    for page in paginate(client, first):
+    for page in paginate(client, first, delay=delay):
         for item in page["items"]:
             playlist_id, changed = _upsert_playlist(conn, account_id, item)
             stats["playlists"] += 1
@@ -118,7 +124,9 @@ def snapshot_playlists(conn, account_id: int, client) -> dict:
                 items = [
                     it
                     for p in paginate(
-                        client, client.playlist_items(item["id"], limit=100, offset=0)
+                        client,
+                        client.playlist_items(item["id"], limit=100, offset=0),
+                        delay=delay,
                     )
                     for it in p["items"]
                 ]
@@ -166,11 +174,11 @@ def snapshot_playlists(conn, account_id: int, client) -> dict:
     return stats
 
 
-def snapshot_saved_tracks(conn, account_id: int, client) -> int:
+def snapshot_saved_tracks(conn, account_id: int, client, delay: float = 0.2) -> int:
     """Upsert the account's saved (liked) tracks."""
     count = 0
     first = client.current_user_saved_tracks(limit=50, offset=0)
-    for page in paginate(client, first):
+    for page in paginate(client, first, delay=delay):
         for item in page["items"]:
             track = extract_track(item_track(item))
             if track is None:

@@ -6,6 +6,8 @@ import json
 import os
 from pathlib import Path
 
+from spotipy.exceptions import SpotifyException
+
 from .accounts import ensure_accounts, select_lastfm_account, select_spotify_account
 from .backup import backup, connect, export
 from .config import Config, load_accounts, load_dotenv
@@ -165,6 +167,11 @@ def main():
                         account_id = ids[(acct.platform, acct.username)]
                         stats = snapshot_account(conn, account_id, sp.client)
                         print(f"{acct.username}: {stats}")
+        except SpotifyException as exc:
+            if exc.http_status == 429:
+                print("Spotify rate-limited; will resume on the next scheduled run")
+            else:
+                parser.exit(1, f"Spotify error {exc.http_status}\n")
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return
