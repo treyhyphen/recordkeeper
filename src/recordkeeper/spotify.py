@@ -14,7 +14,10 @@ from pathlib import Path
 import spotipy
 from spotipy.oauth2 import SpotifyOAuth
 
-_SCOPE = "playlist-read-private playlist-read-collaborative user-library-read"
+_SCOPE = (
+    "playlist-read-private playlist-read-collaborative user-library-read "
+    "playlist-modify-private playlist-modify-public"
+)
 # Spotify no longer allows `localhost` aliases or non-loopback HTTP redirect URIs
 # (enforced since 2025-11-27); loopback IP literals like 127.0.0.1 are still HTTP-OK.
 _DEFAULT_REDIRECT = "http://127.0.0.1:8888/callback"

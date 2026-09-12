@@ -33,6 +33,7 @@ from .plex import sync_inventory
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
+from .throwback import sync_throwback
 from .vinyl import detect_imports, scrobble_imports
 
 
@@ -134,6 +135,19 @@ def main():
     vinyl_sync.add_argument(
         "--limit", type=int, default=None, help="cap imports (testing)"
     )
+    throwback = commands.add_parser(
+        "throwback",
+        help="build the Throwback Thursday playlist (preview by default)",
+    )
+    throwback.add_argument("--user", default=None, help="Spotify account username")
+    throwback.add_argument(
+        "--apply", action="store_true", help="create/replace playlist"
+    )
+    throwback.add_argument(
+        "--since-months", type=int, default=6, help="unplayed threshold (months)"
+    )
+    throwback.add_argument("--limit", type=int, default=50, help="number of tracks")
+    throwback.add_argument("--public", action="store_true", help="make playlist public")
 
     args = parser.parse_args()
 
@@ -317,6 +331,51 @@ def main():
                 )
                 mode = "preview" if not args.apply else "applied"
                 print(f"({mode}): {result}")
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "throwback":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        acct = select_spotify_account(accounts, args.user)
+        try:
+            with _lock(directory):
+                with db_connect(config.database_url) as conn:
+                    sp = _spotify_client(acct, directory)
+                    if not sp.authorized():
+                        parser.exit(1, "not authorized; run spotify-auth first\n")
+                    ids = ensure_accounts(conn, accounts)
+                    account_id = ids[(acct.platform, acct.username)]
+                    result = sync_throwback(
+                        conn,
+                        account_id,
+                        sp.client,
+                        since_months=args.since_months,
+                        limit=args.limit,
+                        dry_run=not args.apply,
+                        public=args.public,
+                    )
+                    mode = "preview" if not args.apply else "applied"
+                    print(
+                        f"({mode}) candidates={len(result['candidates'])} "
+                        f"resolved={result['resolved']} playlist_id={result['playlist_id']}"
+                    )
+                    if not args.apply:
+                        for r in result["candidates"]:
+                            print(
+                                f"  {r['artist_name']} — {r['track_name']}"
+                                f"  (last {r['last_played']:%Y-%m-%d}, {r['plays']} plays)"
+                            )
+                    else:
+                        print(
+                            f"  created={result['created']} replaced={result['replaced']}"
+                        )
+        except SpotifyException as exc:
+            if exc.http_status == 429:
+                print("Spotify rate-limited; will resume on the next scheduled run")
+            else:
+                parser.exit(1, f"Spotify error {exc.http_status}\n")
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return
