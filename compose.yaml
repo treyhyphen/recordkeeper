@@ -1,0 +1,21 @@
+# Recordkeeper services. PostgreSQL is the canonical data store.
+# The data directory is a bind mount on the root LV (23 GiB free), NOT the
+# default /var/lib/docker volume path (which sits on the tight /var LV).
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: recordkeeper-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: recordkeeper
+      POSTGRES_USER: recordkeeper
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - /srv/recordkeeper/db:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U recordkeeper -d recordkeeper"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

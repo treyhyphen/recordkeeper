@@ -38,6 +38,7 @@ class Config:
     lastfm_username: str | None = None
     lastfm_api_key: str | None = None
     lastfm_api_secret: str | None = None
+    database_url: str | None = None
 
     @classmethod
     def from_env(cls) -> "Config":
@@ -45,6 +46,7 @@ class Config:
             lastfm_username=os.environ.get("LASTFM_USERNAME"),
             lastfm_api_key=os.environ.get("LASTFM_API_KEY"),
             lastfm_api_secret=os.environ.get("LASTFM_API_SECRET"),
+            database_url=os.environ.get("DATABASE_URL"),
         )
 
     def require_lastfm_read(self) -> tuple[str, str]:

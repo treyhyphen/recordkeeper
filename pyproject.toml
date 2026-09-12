@@ -3,7 +3,7 @@ name = "recordkeeper"
 version = "0.1.0"
 description = "Local-first music management and backups"
 requires-python = ">=3.11"
-dependencies = ["pylast>=7.1,<8"]
+dependencies = ["pylast>=7.1,<8", "psycopg[binary]>=3.2,<4"]
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.12,<1"]
 [project.scripts]
