@@ -146,3 +146,16 @@ per-track progress in `vinyl_import_tracks.scrobbled` and the write in
 baselined all 250 existing albums (historical). `recordkeeper-vinyl-sync.timer`
 runs `--apply` daily at 04:00 UTC.
 
+## Support these artists
+
+`recordkeeper support-artists` ranks artists by total Last.fm plays and excludes
+those already owned on vinyl (case-insensitive match against `plex_items` rows of
+`entity_type='artist'`). The top un-owned artists are stored in `recommendations`
+as `status='suggested'` (score = play count, `reason` = "N plays, last YYYY-MM-DD"),
+resolving each artist name into the canonical `artists` table. Preview (default)
+lists the shortlist; `--apply` upserts (idempotent per `(account_id, artist_id)`).
+Plex presence is an exclusion signal only — the `status` field carries manual
+overrides (`purchased`, `snoozed`, `dismissed`, etc.). `recordkeeper
+support-artists.timer` refreshes daily at 04:30 UTC. Note: `plex_items.artist_name`
+must be populated for `entity_type='artist'` rows (the ownership join keys on it).
+
