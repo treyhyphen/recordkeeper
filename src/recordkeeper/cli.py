@@ -5,7 +5,9 @@ import fcntl
 import json
 import os
 from pathlib import Path
+from urllib.parse import parse_qs, urlparse
 
+import pylast
 from spotipy.exceptions import SpotifyException
 
 from .accounts import ensure_accounts, select_lastfm_account, select_spotify_account
@@ -14,6 +16,13 @@ from .config import Config, load_accounts, load_dotenv
 from .db import connect as db_connect
 from .db import migrate
 from .lastfm import LastFM
+from .likes import (
+    build_network,
+    complete_session,
+    get_auth_url,
+    save_session_key,
+    sync_loves,
+)
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
@@ -81,6 +90,25 @@ def main():
     )
     spotify_backup.add_argument(
         "--user", default=None, help="limit backup to one Spotify account"
+    )
+    lastfm_auth = commands.add_parser(
+        "lastfm-auth", help="one-time interactive Last.fm web auth (track.love)"
+    )
+    lastfm_auth.add_argument("--user", default=None, help="Last.fm account username")
+    likes_sync = commands.add_parser(
+        "likes-sync",
+        help="sync Spotify likes to Last.fm loves (preview by default)",
+    )
+    likes_sync.add_argument("--user", default=None, help="Spotify account (source)")
+    likes_sync.add_argument(
+        "--lastfm-user", default=None, help="Last.fm account (target)"
+    )
+    likes_sync.add_argument("--apply", action="store_true", help="perform loves")
+    likes_sync.add_argument(
+        "--limit", type=int, default=None, help="cap tracks (testing)"
+    )
+    likes_sync.add_argument(
+        "--no-correct", action="store_true", help="skip canonical-title correction"
     )
 
     args = parser.parse_args()
@@ -172,6 +200,58 @@ def main():
                 print("Spotify rate-limited; will resume on the next scheduled run")
             else:
                 parser.exit(1, f"Spotify error {exc.http_status}\n")
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "lastfm-auth":
+        acct = select_lastfm_account(accounts, args.user)
+        url = get_auth_url(acct)
+        print("Open this URL in a browser and authorize Recordkeeper:\n")
+        print(url)
+        print()
+        input("Press Enter once you have approved the request: ")
+        token = parse_qs(urlparse(url).query)["token"][0]
+        session_key, username = complete_session(acct, token)
+        save_session_key(acct.username, session_key, str(directory))
+        print(f"Authenticated as {username}; session key cached for {acct.username}.")
+        return
+
+    if args.command == "likes-sync":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        spotify_acct = select_spotify_account(accounts, args.user)
+        lastfm_acct = select_lastfm_account(accounts, args.lastfm_user)
+        try:
+            network = build_network(lastfm_acct, str(directory))
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+
+        def love(artist, title):
+            pylast.Track(artist, title, network).love()
+
+        def correct(artist, title):
+            return pylast.Track(artist, title, network).get_correction()
+
+        try:
+            with _lock(directory):
+                with db_connect(config.database_url) as conn:
+                    ids = ensure_accounts(conn, accounts)
+                    spotify_id = ids[(spotify_acct.platform, spotify_acct.username)]
+                    lastfm_id = ids[(lastfm_acct.platform, lastfm_acct.username)]
+                    result = sync_loves(
+                        conn,
+                        spotify_id,
+                        lastfm_id,
+                        love=love,
+                        correct=None if args.no_correct else correct,
+                        dry_run=not args.apply,
+                        limit=args.limit,
+                    )
+                    mode = "preview" if not args.apply else "applied"
+                    print(
+                        f"{spotify_acct.username} -> {lastfm_acct.username} ({mode}): {result}"
+                    )
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return
