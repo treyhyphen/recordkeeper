@@ -70,13 +70,25 @@ def fetch_new_plays(fetch, username: str, watermark, delay: float = 0.3):
 
 
 def sync_scrobbles(
-    conn, account_id: int, username: str, fetch, delay: float = 0.3
+    conn,
+    account_id: int,
+    username: str,
+    fetch,
+    delay: float = 0.3,
+    deep: bool = False,
 ) -> int:
-    """Incrementally sync an account's scrobbles into Postgres (idempotent)."""
-    watermark = conn.execute(
-        "SELECT max(played_at) AS w FROM scrobbles WHERE account_id = %s",
-        (account_id,),
-    ).fetchone()["w"]
+    """Incrementally sync an account's scrobbles into Postgres (idempotent).
+
+    `deep=True` ignores the high-water mark and re-fetches the entire history so
+    backdated scrobbles (e.g. a manual scrobble with an old timestamp) are caught
+    on the next periodic deep pass; existing rows are skipped via ON CONFLICT.
+    """
+    watermark = None
+    if not deep:
+        watermark = conn.execute(
+            "SELECT max(played_at) AS w FROM scrobbles WHERE account_id = %s",
+            (account_id,),
+        ).fetchone()["w"]
     inserted = 0
     for play in fetch_new_plays(fetch, username, watermark, delay=delay):
         conn.execute(

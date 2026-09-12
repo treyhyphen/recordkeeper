@@ -106,6 +106,21 @@ class _FakeConn:
         self.committed += 1
 
 
+def test_sync_scrobbles_deep_ignores_watermark():
+    pages = [_page([_track(100), _track(90)], 1, 2), _page([_track(80)], 2, 2)]
+
+    def fetch(username, page, to=None):
+        return pages[page - 1]
+
+    # watermark (95) would normally stop after the first page; deep must ignore it
+    conn = _FakeConn(watermark=_ts(95))
+    inserted = sync_scrobbles(
+        conn, account_id=7, username="u", fetch=fetch, delay=0, deep=True
+    )
+    assert inserted == 3
+    assert [p[1] for p in conn.inserts] == [_ts(100), _ts(90), _ts(80)]
+
+
 def test_sync_scrobbles_inserts_and_commits():
     pages = [_page([_track(100), _track(90)], 1, 1)]
 

@@ -52,6 +52,11 @@ def main():
         "sync", help="incrementally sync Last.fm scrobbles into PostgreSQL"
     )
     sync.add_argument("--user", default=None, help="limit sync to one Last.fm account")
+    sync.add_argument(
+        "--deep",
+        action="store_true",
+        help="full-history re-fetch to catch backdated scrobbles",
+    )
 
     args = parser.parse_args()
 
@@ -91,7 +96,11 @@ def main():
                             continue
                         account_id = ids[(acct.platform, acct.username)]
                         inserted = sync_scrobbles(
-                            conn, account_id, acct.username, LastFM(api_key).fetch
+                            conn,
+                            account_id,
+                            acct.username,
+                            LastFM(api_key).fetch,
+                            deep=args.deep,
                         )
                         print(f"{acct.username}: synced {inserted} new scrobbles")
         except RuntimeError as exc:
