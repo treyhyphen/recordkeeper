@@ -10,7 +10,12 @@ from urllib.parse import parse_qs, urlparse
 import pylast
 from spotipy.exceptions import SpotifyException
 
-from .accounts import ensure_accounts, select_lastfm_account, select_spotify_account
+from .accounts import (
+    ensure_accounts,
+    select_lastfm_account,
+    select_plex_account,
+    select_spotify_account,
+)
 from .backup import backup, connect, export
 from .config import Config, load_accounts, load_dotenv
 from .db import connect as db_connect
@@ -23,6 +28,8 @@ from .likes import (
     save_session_key,
     sync_loves,
 )
+from .plex import connect as plex_connect
+from .plex import sync_inventory
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
@@ -109,6 +116,13 @@ def main():
     )
     likes_sync.add_argument(
         "--no-correct", action="store_true", help="skip canonical-title correction"
+    )
+    plex_inventory = commands.add_parser(
+        "plex-inventory", help="sync the Plex music library into plex_items"
+    )
+    plex_inventory.add_argument("--user", default=None, help="Plex account username")
+    plex_inventory.add_argument(
+        "--section", default=None, help="limit to one library section title"
     )
 
     args = parser.parse_args()
@@ -252,6 +266,23 @@ def main():
                     print(
                         f"{spotify_acct.username} -> {lastfm_acct.username} ({mode}): {result}"
                     )
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "plex-inventory":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        acct = select_plex_account(accounts, args.user)
+        base_url = acct.credential("base_url")
+        token = acct.credential("token")
+        if not base_url or not token:
+            parser.exit(1, f"No base_url/token for Plex account {acct.username}\n")
+        try:
+            plex = plex_connect(base_url, token)
+            with db_connect(config.database_url) as conn:
+                stats = sync_inventory(conn, plex, section_title=args.section)
+                print(f"{acct.username}: {stats}")
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return

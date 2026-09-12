@@ -7,6 +7,7 @@ dependencies = [
     "pylast>=7.1,<8",
     "psycopg[binary]>=3.2,<4",
     "spotipy>=2.26.0",
+    "plexapi>=4.18.2",
 ]
 [dependency-groups]
 dev = ["pytest>=8,<10", "ruff>=0.12,<1"]

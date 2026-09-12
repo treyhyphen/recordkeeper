@@ -39,6 +39,11 @@ def select_spotify_account(accounts, username=None):
     return _select(accounts, "spotify", username)
 
 
+def select_plex_account(accounts, username=None):
+    """Return an enabled Plex server account (optionally narrowed by username)."""
+    return _select(accounts, "plex", username)
+
+
 def _select(accounts, platform, username=None):
     enabled = [a for a in accounts if a.platform == platform and a.enabled]
     if not enabled:
