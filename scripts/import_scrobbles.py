@@ -74,7 +74,7 @@ def main() -> None:
                FROM _scrobble_stage
                ON CONFLICT (source, artist_name, track_name, played_at) DO NOTHING"""
         )
-        total = conn.execute("SELECT count(*) FROM scrobbles").fetchone()[0]
+        total = conn.execute("SELECT count(*) AS n FROM scrobbles").fetchone()["n"]
         print(
             f"staged {loaded} rows; inserted {result.rowcount}; scrobbles total = {total}"
         )
