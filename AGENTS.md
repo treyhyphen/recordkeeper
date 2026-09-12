@@ -80,3 +80,18 @@ repeated manual full runs or you will trip a ~24 h extended rate limit. Followed
 playlists owned by others are recorded as metadata only (Spotify returns 403 for
 their contents).
 
+## Likes → loves sync
+
+`recordkeeper lastfm-auth --user <u>` runs the one-time Last.fm web-auth flow
+(grant `track.love`), caching a session key at `data/lastfm-session-<u>.json`.
+`recordkeeper likes-sync` resolves each Spotify saved track to its Last.fm
+canonical title and loves it there, one-way and additive (an unlike on Spotify
+never unloves on Last.fm). Preview (default) reports the resolution without
+writing; `--apply` performs the loves. Idempotency comes from `sync_ledger`
+(`task_type='likes_to_loves'`, `source_key` = Spotify URI, per-account unique):
+only tracks not already `synced`/`skipped` are touched. Writes commit per track
+so a long backfill is durable and resumable. Last.fm error 6 (track not found)
+is recorded `skipped`, not retried. Throttled at 0.5 s/track (≈2 requests:
+`getCorrection` + `love`) to stay under Last.fm's 5 req/s. `recordkeeper
+likes-sync.timer` runs `--apply` every 30 min for forward sync.
+
