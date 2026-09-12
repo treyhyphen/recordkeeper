@@ -32,6 +32,7 @@ from .plex import connect as plex_connect
 from .plex import sync_inventory
 from .spotify import Spotify
 from .spotify_backup import snapshot_account
+from .support import sync_recommendations
 from .sync import sync_scrobbles
 from .throwback import load_playlist_id, save_playlist_id, sync_throwback
 from .vinyl import detect_imports, scrobble_imports
@@ -158,6 +159,18 @@ def main():
     )
     throwback.add_argument("--limit", type=int, default=50, help="number of tracks")
     throwback.add_argument("--public", action="store_true", help="make playlist public")
+    support = commands.add_parser(
+        "support-artists",
+        help="build the support-these-artists shortlist (preview by default)",
+    )
+    support.add_argument(
+        "--user", default=None, help="Last.fm account (scrobble source)"
+    )
+    support.add_argument("--apply", action="store_true", help="store suggestions")
+    support.add_argument(
+        "--min-plays", type=int, default=10, help="minimum plays to qualify"
+    )
+    support.add_argument("--limit", type=int, default=50, help="number of suggestions")
 
     args = parser.parse_args()
 
@@ -392,6 +405,32 @@ def main():
                 print("Spotify rate-limited; will resume on the next scheduled run")
             else:
                 parser.exit(1, f"Spotify error {exc.http_status}\n")
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "support-artists":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        acct = select_lastfm_account(accounts, args.user)
+        try:
+            with db_connect(config.database_url) as conn:
+                ids = ensure_accounts(conn, accounts)
+                account_id = ids[(acct.platform, acct.username)]
+                result = sync_recommendations(
+                    conn,
+                    account_id,
+                    min_plays=args.min_plays,
+                    limit=args.limit,
+                    dry_run=not args.apply,
+                )
+                mode = "preview" if not args.apply else "applied"
+                print(f"({mode}) suggested={result['suggested']}")
+                for r in result["rows"]:
+                    print(
+                        f"  {r['artist_name']}"
+                        f"  ({r['plays']} plays, last {r['last_played']:%Y-%m-%d})"
+                    )
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return
