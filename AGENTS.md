@@ -60,3 +60,16 @@ teletraan-1 pulls a read-only `backup-src` rrsync export of `data/` (`.snapshot/
 (02:30 UTC) stages a consistent SQLite `.backup` and a `pg_dump -Fc` dump into
 `data/.snapshot/` so the puller never reads live files. Verify dumps with
 `pg_restore` into a scratch DB before trusting them.
+
+## Spotify snapshots
+
+`recordkeeper spotify-auth --user <u>` runs the one-time OAuth flow (prints an
+authorization URL, exchanges the pasted redirect for a refresh token cached at
+`data/spotify-cache-<u>.json`). `recordkeeper spotify-backup` snapshots every
+visible playlist plus saved tracks. Playlists are versioned: the current
+`snapshot_id` is stored on `playlists`, and a new `playlist_snapshots` capture
+(ordered items) is written only when that id changes, so repeat runs are cheap
+and history is preserved. Scopes: `playlist-read-private`,
+`playlist-read-collaborative`, `user-library-read`. Spotify account credentials
+are `client_id`/`client_secret`/`redirect_uri` in `accounts.json`.
+
