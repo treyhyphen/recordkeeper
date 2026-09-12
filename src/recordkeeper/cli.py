@@ -22,7 +22,7 @@ def _spotify_client(acct, directory: Path) -> Spotify:
     client_secret = acct.credential("client_secret")
     if not client_id or not client_secret:
         raise RuntimeError(f"No client_id/client_secret for account {acct.username}")
-    redirect_uri = acct.credential("redirect_uri") or "http://localhost:8888/callback"
+    redirect_uri = acct.credential("redirect_uri")
     return Spotify(
         acct.username, client_id, client_secret, redirect_uri, data_dir=str(directory)
     )
