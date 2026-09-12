@@ -10,6 +10,8 @@ from __future__ import annotations
 
 import json
 
+from spotipy.exceptions import SpotifyException
+
 
 def paginate(client, first: dict):
     """Yield each page, following Spotify's `next` cursor."""
@@ -88,8 +90,14 @@ def _upsert_playlist(conn, account_id: int, item: dict) -> tuple[int, bool]:
 
 
 def snapshot_playlists(conn, account_id: int, client) -> dict:
-    """Versioned backup of every playlist the account can see."""
-    stats = {"playlists": 0, "snapshots": 0, "items": 0}
+    """Versioned backup of every playlist the account can see.
+
+    Playlist metadata is stored for every visible playlist, but item contents
+    are only fetched for playlists the account owns or collaborates on; Spotify
+    returns 403 for followed playlists owned by others (a 2026 policy), which
+    are skipped rather than aborting the run.
+    """
+    stats = {"playlists": 0, "snapshots": 0, "items": 0, "skipped_items": 0}
     first = client.current_user_playlists(limit=50, offset=0)
     for page in paginate(client, first):
         for item in page["items"]:
@@ -97,13 +105,19 @@ def snapshot_playlists(conn, account_id: int, client) -> dict:
             stats["playlists"] += 1
             if not changed:
                 continue
-            items = [
-                it
-                for p in paginate(
-                    client, client.playlist_items(item["id"], limit=100, offset=0)
-                )
-                for it in p["items"]
-            ]
+            try:
+                items = [
+                    it
+                    for p in paginate(
+                        client, client.playlist_items(item["id"], limit=100, offset=0)
+                    )
+                    for it in p["items"]
+                ]
+            except SpotifyException as exc:
+                if exc.http_status in (403, 404):
+                    stats["skipped_items"] += 1
+                    continue
+                raise
             snapshot = conn.execute(
                 """
                 INSERT INTO playlist_snapshots (playlist_id, snapshot_id, track_count, raw)
