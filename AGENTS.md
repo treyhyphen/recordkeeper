@@ -155,7 +155,18 @@ as `status='suggested'` (score = play count, `reason` = "N plays, last YYYY-MM-D
 resolving each artist name into the canonical `artists` table. Preview (default)
 lists the shortlist; `--apply` upserts (idempotent per `(account_id, artist_id)`).
 Plex presence is an exclusion signal only — the `status` field carries manual
-overrides (`purchased`, `snoozed`, `dismissed`, etc.). `recordkeeper
-support-artists.timer` refreshes daily at 04:30 UTC. Note: `plex_items.artist_name`
+overrides (`purchased`, `snoozed`, `dismissed`, etc.).
+`recordkeeper support-artists.timer` refreshes daily at 04:30 UTC. Note: `plex_items.artist_name`
 must be populated for `entity_type='artist'` rows (the ownership join keys on it).
+
+## Web UI
+
+`recordkeeper serve` runs a read-only FastAPI + Jinja2 web UI (dense UniFi-style:
+dark sidebar, compact tables, status dots, monospace values). Pages: dashboard
+(counts + top artists + recent scrobbles), scrobbles, playlists, support-artists,
+vinyl. Each route opens a short-lived Postgres connection (reads `DATABASE_URL`).
+Deployment: `recordkeeper-web.service` binds `0.0.0.0:8000`; toolbox UFW needs an
+inbound `172.16.0.0/16 → 8000/tcp` allow for LAN access. A `Dockerfile` + the
+`compose.yaml` `web` service containerize the same app (DATABASE_URL points at the
+`db` service hostname on the compose network).
 
