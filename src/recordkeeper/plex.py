@@ -89,7 +89,7 @@ def sync_inventory(conn, plex, section_title: str | None = None) -> dict:
                 conn,
                 "artist",
                 artist.title,
-                None,
+                artist.title,
                 None,
                 str(artist.ratingKey),
                 artist.guid,

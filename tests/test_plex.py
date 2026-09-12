@@ -75,6 +75,10 @@ def test_sync_inventory_upserts_artists_albums_tracks():
     assert stats == {"artists": 1, "albums": 1, "tracks": 1}
     entity_types = [w[1][0] for w in conn.writes]
     assert entity_types == ["artist", "album", "track"]
+    # artist row carries its own name in artist_name (not None)
+    artist_params = conn.writes[0][1]
+    assert artist_params[1] == "King Buffalo"  # title
+    assert artist_params[2] == "King Buffalo"  # artist_name
     # track row carries artist + album names
     track_params = conn.writes[2][1]
     assert track_params[2] == "King Buffalo"  # artist_name
