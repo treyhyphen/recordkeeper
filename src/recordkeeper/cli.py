@@ -48,14 +48,19 @@ def _spotify_client(acct, directory: Path) -> Spotify:
     )
 
 
-def _lock(directory: Path):
-    """Acquire the exclusive worker lock, raising if another worker is active."""
-    lock = (directory / "worker.lock").open("w")
+def _lock(directory: Path, name: str = "worker"):
+    """Acquire an exclusive per-command lock, raising if that command is active.
+
+    Each subcommand uses its own lock file so a long-running job (e.g. the
+    likes→loves backfill) doesn't block unrelated jobs that touch different
+    external APIs.
+    """
+    lock = (directory / f"{name}.lock").open("w")
     try:
         fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
         lock.close()
-        raise RuntimeError("Another worker is active") from None
+        raise RuntimeError(f"Another {name} worker is active") from None
     return lock
 
 
@@ -177,7 +182,7 @@ def main():
         if not selected:
             parser.exit(1, "No enabled Last.fm accounts configured\n")
         try:
-            with _lock(directory):
+            with _lock(directory, "sync"):
                 with db_connect(config.database_url) as conn:
                     ids = ensure_accounts(conn, accounts)
                     for acct in selected:
@@ -220,7 +225,7 @@ def main():
         if not selected:
             parser.exit(1, "No enabled Spotify accounts configured\n")
         try:
-            with _lock(directory):
+            with _lock(directory, "spotify-backup"):
                 with db_connect(config.database_url) as conn:
                     ids = ensure_accounts(conn, accounts)
                     for acct in selected:
@@ -272,7 +277,7 @@ def main():
             return pylast.Track(artist, title, network).get_correction()
 
         try:
-            with _lock(directory):
+            with _lock(directory, "likes"):
                 with db_connect(config.database_url) as conn:
                     ids = ensure_accounts(conn, accounts)
                     spotify_id = ids[(spotify_acct.platform, spotify_acct.username)]
@@ -340,7 +345,7 @@ def main():
             parser.exit(1, "DATABASE_URL is not configured\n")
         acct = select_spotify_account(accounts, args.user)
         try:
-            with _lock(directory):
+            with _lock(directory, "throwback"):
                 with db_connect(config.database_url) as conn:
                     sp = _spotify_client(acct, directory)
                     if not sp.authorized():
@@ -387,7 +392,7 @@ def main():
             ).fetchall()
             print(json.dumps(rows))
             return
-        with _lock(directory):
+        with _lock(directory, "backup"):
             try:
                 if args.command == "abandon":
                     db.execute(
