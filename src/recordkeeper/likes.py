@@ -112,7 +112,7 @@ def sync_loves(
     correct=None,
     dry_run: bool = True,
     limit: int | None = None,
-    delay: float = 0.25,
+    delay: float = 0.5,
 ) -> dict:
     """Sync Spotify saved tracks to Last.fm loves, reporting a summary.
 
