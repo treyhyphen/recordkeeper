@@ -6,13 +6,26 @@ import json
 import os
 from pathlib import Path
 
-from .accounts import ensure_accounts, select_lastfm_account
+from .accounts import ensure_accounts, select_lastfm_account, select_spotify_account
 from .backup import backup, connect, export
 from .config import Config, load_accounts, load_dotenv
 from .db import connect as db_connect
 from .db import migrate
 from .lastfm import LastFM
+from .spotify import Spotify
+from .spotify_backup import snapshot_account
 from .sync import sync_scrobbles
+
+
+def _spotify_client(acct, directory: Path) -> Spotify:
+    client_id = acct.credential("client_id")
+    client_secret = acct.credential("client_secret")
+    if not client_id or not client_secret:
+        raise RuntimeError(f"No client_id/client_secret for account {acct.username}")
+    redirect_uri = acct.credential("redirect_uri") or "http://localhost:8888/callback"
+    return Spotify(
+        acct.username, client_id, client_secret, redirect_uri, data_dir=str(directory)
+    )
 
 
 def _lock(directory: Path):
@@ -56,6 +69,16 @@ def main():
         "--deep",
         action="store_true",
         help="full-history re-fetch to catch backdated scrobbles",
+    )
+    auth = commands.add_parser(
+        "spotify-auth", help="interactive OAuth for a Spotify account"
+    )
+    auth.add_argument("--user", default=None, help="Spotify account username")
+    spotify_backup = commands.add_parser(
+        "spotify-backup", help="snapshot Spotify playlists and saved tracks"
+    )
+    spotify_backup.add_argument(
+        "--user", default=None, help="limit backup to one Spotify account"
     )
 
     args = parser.parse_args()
@@ -103,6 +126,45 @@ def main():
                             deep=args.deep,
                         )
                         print(f"{acct.username}: synced {inserted} new scrobbles")
+        except RuntimeError as exc:
+            parser.exit(1, f"{exc}\n")
+        return
+
+    if args.command == "spotify-auth":
+        acct = select_spotify_account(accounts, args.user)
+        sp = _spotify_client(acct, directory)
+        print("Open this URL in a browser and authorize Recordkeeper:\n")
+        print(sp.authorize_url())
+        print()
+        redirect = input(
+            "Paste the full redirect URL (the one your browser lands on): "
+        ).strip()
+        sp.complete_auth(redirect)
+        print("Authorized: access token cached, refresh token stored for future runs.")
+        return
+
+    if args.command == "spotify-backup":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        selected = [a for a in accounts if a.platform == "spotify" and a.enabled]
+        if args.user:
+            selected = [a for a in selected if a.username == args.user]
+        if not selected:
+            parser.exit(1, "No enabled Spotify accounts configured\n")
+        try:
+            with _lock(directory):
+                with db_connect(config.database_url) as conn:
+                    ids = ensure_accounts(conn, accounts)
+                    for acct in selected:
+                        sp = _spotify_client(acct, directory)
+                        if not sp.authorized():
+                            print(
+                                f"{acct.username}: not authorized; run spotify-auth first"
+                            )
+                            continue
+                        account_id = ids[(acct.platform, acct.username)]
+                        stats = snapshot_account(conn, account_id, sp.client)
+                        print(f"{acct.username}: {stats}")
         except RuntimeError as exc:
             parser.exit(1, f"{exc}\n")
         return

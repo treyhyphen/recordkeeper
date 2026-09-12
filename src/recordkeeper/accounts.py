@@ -31,12 +31,21 @@ def ensure_accounts(conn, accounts) -> dict[tuple[str, str], int]:
 
 def select_lastfm_account(accounts, username=None):
     """Return an enabled Last.fm account (optionally narrowed by username)."""
-    enabled = [a for a in accounts if a.platform == "lastfm" and a.enabled]
+    return _select(accounts, "lastfm", username)
+
+
+def select_spotify_account(accounts, username=None):
+    """Return an enabled Spotify account (optionally narrowed by username)."""
+    return _select(accounts, "spotify", username)
+
+
+def _select(accounts, platform, username=None):
+    enabled = [a for a in accounts if a.platform == platform and a.enabled]
     if not enabled:
-        raise RuntimeError("No enabled Last.fm account configured (accounts.json)")
+        raise RuntimeError(f"No enabled {platform} account configured (accounts.json)")
     if username:
         for acct in enabled:
             if acct.username == username:
                 return acct
-        raise RuntimeError(f"No enabled Last.fm account named {username!r}")
+        raise RuntimeError(f"No enabled {platform} account named {username!r}")
     return enabled[0]
