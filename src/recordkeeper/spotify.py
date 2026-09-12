@@ -52,7 +52,7 @@ class Spotify:
             ),
             show_dialog=True,
         )
-        self.client = spotipy.Spotify(auth_manager=self.oauth)
+        self.client = spotipy.Spotify(auth_manager=self.oauth, status_retries=0)
 
     def authorize_url(self) -> str:
         return self.oauth.get_authorize_url()

@@ -110,6 +110,28 @@ The Plex server is `wopr` (`172.16.1.5:32400`); account credentials (`base_url`,
 so `172.16.1.5:32400/tcp` must be allowed outbound for this job (same as the
 `172.16.1.5:22` allow already on teletraan-1).
 
+## Throwback Thursday
+
+`recordkeeper throwback` builds a weekly Spotify playlist of tracks the account
+hasn't played in `--since-months` (default 6) and has played at least 3 times
+(drawn from the Last.fm scrobble history; candidates come from the *Last.fm*
+account, the playlist is written to the *Spotify* account). Each candidate is
+resolved to a Spotify URI via search (best-effort, top result; tracks not on
+Spotify are skipped). Preview (default) lists the candidates; `--apply` creates
+the playlist on first run and replaces its contents each week. The playlist id
+is persisted in `data/throwback-playlist-<u>.json` (gitignored) — do NOT re-derive
+it via `current_user_playlists`, which the snapshot job exhausts.
+
+Post-Feb-2026 Spotify endpoints: `POST /me/playlists` (create) and
+`PUT /playlists/{id}/items` (replace) — Spotipy's `user_playlist_create` /
+`playlist_replace_items` still call the retired `/users/{id}/playlists` and
+`/playlists/{id}/tracks` and return 403, so throwback calls the new paths
+directly via `client._post` / `client._put`. The Spotify client is constructed
+with `status_retries=0` so a 429 raises immediately instead of retrying/sleeping
+through Spotify's extended rate limit. `recordkeeper-throwback.timer` runs
+`--apply` every Thursday at 12:00 UTC. Scopes include `playlist-modify-private`
+and `playlist-modify-public`.
+
 ## Vinyl scrobble
 
 `recordkeeper vinyl-sync` detects albums newly added to the Plex "Music" section
