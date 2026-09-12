@@ -16,8 +16,9 @@ uv run recordkeeper export 3
 uv run pytest -q
 uv run ruff check .
 ```
-The API key is read from the local KeePassXC entry
-`Recordkeeper/Last.fm API key`. No secret is stored in this repository.
+Credentials come from environment variables (`LASTFM_USERNAME`,
+`LASTFM_API_KEY`, `LASTFM_API_SECRET`) or an optional `.env` file (copy
+`.env.example`; keep it mode 0600). No secret is stored in this repository.
 Data defaults to `./data`; use `recordkeeper --data /absolute/local/path ...`.
 Do not put the SQLite working database on an SMB/NFS share.
 

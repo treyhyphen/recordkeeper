@@ -7,19 +7,24 @@ import os
 from pathlib import Path
 
 from .backup import backup, connect, export
-from .lastfm import LastFM, vault_key
+from .config import Config, load_dotenv
+from .lastfm import LastFM
 
 
 def main():
     """Run an exclusive backup, inspect progress, or export a completed run."""
     os.umask(0o077)
+    load_dotenv()
+    config = Config.from_env()
     parser = argparse.ArgumentParser(
         description="Recordkeeper: your music, accounted for"
     )
     parser.add_argument("--data", default="data")
     commands = parser.add_subparsers(dest="command", required=True)
     start = commands.add_parser("backup")
-    start.add_argument("--user", required=True)
+    start.add_argument(
+        "--user", default=None, help="Last.fm username (default: $LASTFM_USERNAME)"
+    )
     start.add_argument(
         "--cutoff", type=int, help="UTC epoch upper boundary for a new snapshot"
     )
@@ -50,8 +55,11 @@ def main():
                     db.commit()
                     return
                 if args.command == "backup":
+                    username, api_key = config.require_lastfm_read()
+                    if args.user:
+                        username = args.user
                     run_id, count = backup(
-                        db, args.user, LastFM(vault_key()).fetch, cutoff=args.cutoff
+                        db, username, LastFM(api_key).fetch, cutoff=args.cutoff
                     )
                     print(f"Verified snapshot {run_id}: {count} plays")
                 else:
