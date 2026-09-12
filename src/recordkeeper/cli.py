@@ -8,6 +8,7 @@ from pathlib import Path
 
 from .backup import backup, connect, export
 from .config import Config, load_dotenv
+from .db import migrate
 from .lastfm import LastFM
 
 
@@ -32,7 +33,14 @@ def main():
     output = commands.add_parser("export")
     output.add_argument("run_id", type=int)
     commands.add_parser("abandon")
+    commands.add_parser("migrate", help="apply pending PostgreSQL schema migrations")
     args = parser.parse_args()
+    if args.command == "migrate":
+        if not config.database_url:
+            parser.exit(1, "DATABASE_URL is not configured\n")
+        applied = migrate(config.database_url)
+        print("applied migrations:", applied or "none (already up to date)")
+        return
     directory = Path(args.data)
     directory.mkdir(parents=True, exist_ok=True, mode=0o700)
     with connect(directory / "archive.sqlite3") as db:
