@@ -78,11 +78,18 @@ def resolve_uris(client, rows, delay: float = 0.25):
 
 
 def _create_playlist(client, public: bool) -> str:
-    user_id = client.me()["id"]
-    playlist = client.user_playlist_create(
-        user_id, PLAYLIST_NAME, public=public, description=DESCRIPTION
+    # Feb-2026 migration retired POST /users/{id}/playlists (which Spotipy's
+    # user_playlist_create still calls) in favour of POST /me/playlists.
+    playlist = client._post(
+        "me/playlists",
+        payload={"name": PLAYLIST_NAME, "public": public, "description": DESCRIPTION},
     )
     return playlist["id"]
+
+
+def _replace_items(client, playlist_id: str, uris: list[str]) -> None:
+    # Feb-2026 migration renamed /playlists/{id}/tracks to /playlists/{id}/items.
+    client._put(f"playlists/{playlist_id}/items", payload={"uris": uris})
 
 
 def sync_throwback(
@@ -106,14 +113,14 @@ def sync_throwback(
             playlist_id = _create_playlist(client, public)
             created = True
         try:
-            client.playlist_replace_items(playlist_id, uris)
+            _replace_items(client, playlist_id, uris)
         except SpotifyException as exc:
             if exc.http_status != 404:
                 raise
             # Playlist was deleted since we last ran — recreate it.
             playlist_id = _create_playlist(client, public)
             created = True
-            client.playlist_replace_items(playlist_id, uris)
+            _replace_items(client, playlist_id, uris)
         replaced = len(uris)
     return {
         "candidates": rows,

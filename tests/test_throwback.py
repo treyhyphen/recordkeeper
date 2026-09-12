@@ -99,15 +99,12 @@ def test_sync_throwback_apply_creates_when_no_id():
         def search(self, q=None, type=None, limit=None):
             return {"tracks": {"items": [{"uri": "spotify:track:abc"}]}}
 
-        def me(self):
-            return {"id": "u1"}
-
-        def user_playlist_create(self, user, name, public=False, description=None):
-            self.created_args = (user, name, public)
+        def _post(self, path, payload=None):
+            self.created_args = (path, payload)
             return {"id": "pl1"}
 
-        def playlist_replace_items(self, playlist_id, uris):
-            self.replaced_args = (playlist_id, uris)
+        def _put(self, path, payload=None):
+            self.replaced_args = (path, payload)
 
     conn = _Conn([_ROW])
     client = _Client()
@@ -115,8 +112,12 @@ def test_sync_throwback_apply_creates_when_no_id():
     assert result["created"] is True
     assert result["replaced"] == 1
     assert result["playlist_id"] == "pl1"
-    assert client.created_args[1] == PLAYLIST_NAME
-    assert client.replaced_args == ("pl1", ["spotify:track:abc"])
+    assert client.created_args[0] == "me/playlists"
+    assert client.created_args[1]["name"] == PLAYLIST_NAME
+    assert client.replaced_args == (
+        "playlists/pl1/items",
+        {"uris": ["spotify:track:abc"]},
+    )
 
 
 def test_sync_throwback_apply_reuses_existing_id():
@@ -127,15 +128,15 @@ def test_sync_throwback_apply_reuses_existing_id():
         def search(self, q=None, type=None, limit=None):
             return {"tracks": {"items": [{"uri": "spotify:track:abc"}]}}
 
-        def user_playlist_create(self, *a, **kw):
+        def _post(self, path, payload=None):
             raise AssertionError("should not create when id is provided")
 
-        def playlist_replace_items(self, playlist_id, uris):
-            self.replaced_args = (playlist_id, uris)
+        def _put(self, path, payload=None):
+            self.replaced_args = (path, payload)
 
     conn = _Conn([_ROW])
     client = _Client()
     result = sync_throwback(conn, 7, client, dry_run=False, playlist_id="pl-existing")
     assert result["created"] is False
     assert result["playlist_id"] == "pl-existing"
-    assert client.replaced_args[0] == "pl-existing"
+    assert client.replaced_args[0] == "playlists/pl-existing/items"
