@@ -10,8 +10,6 @@
 --   * Provider payloads are kept as JSONB alongside typed columns so the raw
 --     record survives while common fields stay queryable.
 
-BEGIN;
-
 -- =====================================================================
 -- Identity & catalog
 -- =====================================================================
@@ -283,5 +281,3 @@ CREATE TABLE jobs (
     started_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     finished_at TIMESTAMPTZ
 );
-
-COMMIT;
