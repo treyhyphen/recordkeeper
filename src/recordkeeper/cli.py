@@ -144,7 +144,12 @@ def main():
         "throwback",
         help="build the Throwback Thursday playlist (preview by default)",
     )
-    throwback.add_argument("--user", default=None, help="Spotify account username")
+    throwback.add_argument(
+        "--user", default=None, help="Spotify account (playlist target)"
+    )
+    throwback.add_argument(
+        "--lastfm-user", default=None, help="Last.fm account (scrobble source)"
+    )
     throwback.add_argument(
         "--apply", action="store_true", help="create/replace playlist"
     )
@@ -344,6 +349,7 @@ def main():
         if not config.database_url:
             parser.exit(1, "DATABASE_URL is not configured\n")
         acct = select_spotify_account(accounts, args.user)
+        lastfm_acct = select_lastfm_account(accounts, args.lastfm_user)
         try:
             with _lock(directory, "throwback"):
                 with db_connect(config.database_url) as conn:
@@ -351,7 +357,7 @@ def main():
                     if not sp.authorized():
                         parser.exit(1, "not authorized; run spotify-auth first\n")
                     ids = ensure_accounts(conn, accounts)
-                    account_id = ids[(acct.platform, acct.username)]
+                    account_id = ids[(lastfm_acct.platform, lastfm_acct.username)]
                     result = sync_throwback(
                         conn,
                         account_id,
