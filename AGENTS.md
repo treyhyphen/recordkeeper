@@ -73,3 +73,10 @@ and history is preserved. Scopes: `playlist-read-private`,
 `playlist-read-collaborative`, `user-library-read`. Spotify account credentials
 are `client_id`/`client_secret`/`redirect_uri` in `accounts.json`.
 
+`recordkeeper-spotify-backup.timer` runs the snapshot daily at 03:30 UTC.
+Requests are throttled (0.2 s between pages) and a 429 rate-limit exits 0
+gracefully so the next scheduled run resumes — do not hammer Spotify with
+repeated manual full runs or you will trip a ~24 h extended rate limit. Followed
+playlists owned by others are recorded as metadata only (Spotify returns 403 for
+their contents).
+
