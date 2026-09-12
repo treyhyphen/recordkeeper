@@ -95,3 +95,18 @@ is recorded `skipped`, not retried. Throttled at 0.5 s/track (≈2 requests:
 `getCorrection` + `love`) to stay under Last.fm's 5 req/s. `recordkeeper
 likes-sync.timer` runs `--apply` every 30 min for forward sync.
 
+## Plex inventory
+
+`recordkeeper plex-inventory` enumerates the Plex `artist`-type library sections
+(artists → albums → tracks) and upserts them into `plex_items`, keyed on Plex's
+`ratingKey`. This is read-only and is the "what is already owned" backbone for
+the vinyl-scrobble and support-these-artists features. The music library
+("Music", `/mnt/Media/Music/Vinyl Rips`) is the vinyl-rips section; its
+`added_at` timestamps are the anchor for estimating vinyl scrobble times.
+`recordkeeper-plex-inventory.timer` refreshes daily at 03:45 UTC.
+
+The Plex server is `wopr` (`172.16.1.5:32400`); account credentials (`base_url`,
+`token`) live in `accounts.json`. Deployment note: toolbox UFW is deny-outgoing,
+so `172.16.1.5:32400/tcp` must be allowed outbound for this job (same as the
+`172.16.1.5:22` allow already on teletraan-1).
+
