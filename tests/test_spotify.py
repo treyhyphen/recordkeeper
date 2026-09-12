@@ -1,6 +1,11 @@
 """Spotify snapshot helpers: normalization, pagination, change detection."""
 
-from recordkeeper.spotify_backup import _upsert_playlist, extract_track, paginate
+from recordkeeper.spotify_backup import (
+    _upsert_playlist,
+    extract_track,
+    item_track,
+    paginate,
+)
 
 
 def test_extract_track_normalizes():
@@ -23,6 +28,25 @@ def test_extract_track_normalizes():
 def test_extract_track_deleted_returns_none():
     assert extract_track(None) is None
     assert extract_track({}) is None
+
+
+def test_item_track_handles_playlist_item_key():
+    # playlist_items returns the track under `item` when additional_types is set
+    item = {
+        "added_at": "2026-08-27T18:51:05Z",
+        "item": {
+            "uri": "spotify:track:x",
+            "name": "Song",
+            "artists": [{"name": "A"}],
+            "album": {"name": "Al"},
+        },
+    }
+    assert item_track(item)["uri"] == "spotify:track:x"
+    # current_user_saved_tracks returns it under `track`
+    saved = {
+        "track": {"uri": "spotify:track:y", "name": "T", "artists": [], "album": {}}
+    }
+    assert item_track(saved)["uri"] == "spotify:track:y"
 
 
 class _FakeClient:

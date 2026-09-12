@@ -34,6 +34,15 @@ def extract_track(track: dict | None) -> dict | None:
     }
 
 
+def item_track(item: dict) -> dict | None:
+    """Extract the embedded track object from a playlist/saved-track item.
+
+    `playlist_items` returns the track under `item` (when `additional_types` is
+    set) or `track`; `current_user_saved_tracks` uses `track`.
+    """
+    return item.get("track") or item.get("item")
+
+
 def _upsert_playlist(conn, account_id: int, item: dict) -> tuple[int, bool]:
     """Insert/update a playlist row; return (playlist_id, changed)."""
     existing = conn.execute(
@@ -132,7 +141,7 @@ def snapshot_playlists(conn, account_id: int, client) -> dict:
             ).fetchone()
             stats["snapshots"] += 1
             for position, it in enumerate(items):
-                track = extract_track(it.get("track"))
+                track = extract_track(item_track(it))
                 if track is None:
                     continue
                 conn.execute(
@@ -163,7 +172,7 @@ def snapshot_saved_tracks(conn, account_id: int, client) -> int:
     first = client.current_user_saved_tracks(limit=50, offset=0)
     for page in paginate(client, first):
         for item in page["items"]:
-            track = extract_track(item.get("track"))
+            track = extract_track(item_track(item))
             if track is None:
                 continue
             conn.execute(
