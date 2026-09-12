@@ -20,19 +20,24 @@ class LastFM:
     def __init__(self, api_key: str):
         self.api_key = api_key
 
-    def fetch(self, username: str, cutoff: int, page: int) -> dict:
-        """Fetch one page; never leak credential-bearing URLs in exceptions."""
-        query = urllib.parse.urlencode(
-            {
-                "method": "user.getRecentTracks",
-                "user": username,
-                "api_key": self.api_key,
-                "format": "json",
-                "limit": 200,
-                "to": cutoff,
-                "page": page,
-            }
-        )
+    def fetch(self, username: str, page: int, to: int | None = None) -> dict:
+        """Fetch one page; never leak credential-bearing URLs in exceptions.
+
+        `to` is an optional UTC epoch upper boundary (defaults to now, i.e. the
+        newest scrobbles first). Omit it for incremental sync; set it for a
+        fixed-cutoff historical snapshot.
+        """
+        params = {
+            "method": "user.getRecentTracks",
+            "user": username,
+            "api_key": self.api_key,
+            "format": "json",
+            "limit": 200,
+            "page": page,
+        }
+        if to is not None:
+            params["to"] = to
+        query = urllib.parse.urlencode(params)
         for attempt in range(5):
             try:
                 with urllib.request.urlopen(

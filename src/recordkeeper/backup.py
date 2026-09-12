@@ -55,7 +55,7 @@ def backup(db, username, fetch, delay=0.3, cutoff=None):
         run = (cur.lastrowid, cutoff, 1, None)
     run_id, cutoff, page, expected = run
     while True:
-        payload = fetch(username, cutoff, page)
+        payload = fetch(username, page, to=cutoff)
         meta = payload["recenttracks"]["@attr"]
         total = int(meta["total"])
         pages = max(1, int(meta["totalPages"]))

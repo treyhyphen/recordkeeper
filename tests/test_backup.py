@@ -20,7 +20,7 @@ def payload(page=1, pages=1, total=2):
 
 def test_repeat_plays_and_export(tmp_path):
     db = connect(tmp_path / "db")
-    run, count = backup(db, "fixture", lambda *args: payload(), delay=0)
+    run, count = backup(db, "fixture", lambda *args, **kwargs: payload(), delay=0)
     assert count == 2
     path = export(db, run, tmp_path / "exports")
     assert len((path / "plays.csv").read_text().splitlines()) == 3
@@ -30,7 +30,7 @@ def test_repeat_plays_and_export(tmp_path):
 def test_resume(tmp_path):
     db = connect(tmp_path / "db")
 
-    def fetch(user, cutoff, page):
+    def fetch(user, page, to=None):
         if page == 2:
             raise RuntimeError("simulated outage")
         return payload(page, 2, 4)
@@ -39,7 +39,7 @@ def test_resume(tmp_path):
         backup(db, "fixture", fetch, delay=0)
     seen = []
 
-    def resume(user, cutoff, page):
+    def resume(user, page, to=None):
         seen.append(page)
         return payload(page, 2, 4)
 
@@ -50,7 +50,7 @@ def test_resume(tmp_path):
 def test_count_mismatch(tmp_path):
     db = connect(tmp_path / "db")
     with pytest.raises(ValueError, match="count mismatch"):
-        backup(db, "fixture", lambda *args: payload(total=3), delay=0)
+        backup(db, "fixture", lambda *args, **kwargs: payload(total=3), delay=0)
     with pytest.raises(ValueError):
         export(db, 1, tmp_path)
 
@@ -64,7 +64,7 @@ def test_now_playing_excluded():
 def test_wrong_page_not_committed(tmp_path):
     db = connect(tmp_path / "db")
     with pytest.raises(ValueError, match="wrong page"):
-        backup(db, "fixture", lambda *args: payload(page=2), delay=0)
+        backup(db, "fixture", lambda *args, **kwargs: payload(page=2), delay=0)
     assert db.execute("SELECT COUNT(*) FROM pages").fetchone()[0] == 0
 
 
@@ -72,4 +72,4 @@ def test_empty_history(tmp_path):
     db = connect(tmp_path / "db")
     data = payload(total=0)
     data["recenttracks"]["track"] = []
-    assert backup(db, "fixture", lambda *args: data, delay=0)[1] == 0
+    assert backup(db, "fixture", lambda *args, **kwargs: data, delay=0)[1] == 0

@@ -1,0 +1,11 @@
+{
+  "accounts": [
+    {
+      "platform": "lastfm",
+      "username": "your_lastfm_username",
+      "display_name": "You",
+      "api_key": "PASTE_API_KEY",
+      "api_secret": "PASTE_SHARED_SECRET"
+    }
+  ]
+}
