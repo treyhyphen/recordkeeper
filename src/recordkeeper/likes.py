@@ -150,8 +150,8 @@ def sync_loves(
             if not dry_run:
                 conn.execute(
                     """INSERT INTO sync_ledger
-                    (account_id, task_type, source_key, status, last_error)
-                    VALUES (%s, %s, %s, 'skipped', 'Missing artist or title')
+                    (account_id, task_type, source_key, target_key, status, last_error)
+                    VALUES (%s, %s, %s, '', 'skipped', 'Missing artist or title')
                     ON CONFLICT (account_id, task_type, source_key) DO UPDATE
                     SET status = 'skipped', last_error = EXCLUDED.last_error
                     """,
