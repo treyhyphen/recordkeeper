@@ -16,6 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
 from .db import connect
+from .overlap import report
 
 BASE = Path(__file__).parent
 
@@ -30,6 +31,7 @@ NAV = [
     ("Dashboard", "/"),
     ("Scrobbles", "/scrobbles"),
     ("Playlists", "/playlists"),
+    ("Overlap", "/overlap"),
     ("Support artists", "/support"),
     ("Vinyl", "/vinyl"),
 ]
@@ -120,6 +122,38 @@ def playlists(request: Request):
         ).fetchall()
     return templates.TemplateResponse(
         request, "playlists.html", _ctx(request, "Playlists", rows=rows)
+    )
+
+
+@app.get("/overlap", response_class=HTMLResponse)
+def overlap(request: Request, account_id: int | None = None):
+    """Compare saved playlists for one explicitly selected Spotify account."""
+    with connect(_url()) as conn:
+        accounts = conn.execute(
+            "SELECT id, username FROM accounts WHERE platform = 'spotify' ORDER BY id"
+        ).fetchall()
+        ids = {a["id"] for a in accounts}
+        selected = (
+            account_id
+            if account_id in ids
+            else (accounts[0]["id"] if accounts else None)
+        )
+        data = (
+            report(conn, selected)
+            if selected
+            else {"pairs": [], "total": 0, "available": 0, "unavailable": []}
+        )
+    return templates.TemplateResponse(
+        request,
+        "overlap.html",
+        _ctx(
+            request,
+            "Overlap",
+            accounts=accounts,
+            selected=selected,
+            data=data,
+            pairs=data["pairs"][:100],
+        ),
     )
 
 

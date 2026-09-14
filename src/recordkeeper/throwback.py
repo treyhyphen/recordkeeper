@@ -60,18 +60,19 @@ def select_candidates(conn, account_id, since_months=6, min_plays=3, limit=50):
     ).fetchall()
 
 
-def resolve_uris(client, rows, delay: float = 0.25):
+def resolve_uris(client, rows, delay: float = 0.25, limit: int = 50):
     """Map candidate (artist, track) pairs to Spotify track URIs via search."""
     uris = []
     for row in rows:
         query = f"track:{row['track_name']} artist:{row['artist_name']}"
-        try:
-            results = client.search(q=query, type="track", limit=1)
-        except SpotifyException:
-            continue  # rate limit or transient — skip, don't abort the run
+        results = client.search(q=query, type="track", limit=1)
         items = (results.get("tracks") or {}).get("items") or []
         if items:
-            uris.append(items[0]["uri"])
+            uri = items[0].get("uri")
+            if uri and uri.startswith("spotify:track:") and uri not in uris:
+                uris.append(uri)
+                if len(uris) == limit:
+                    break
         if delay:
             time.sleep(delay)
     return uris
@@ -104,8 +105,15 @@ def sync_throwback(
     playlist_id: str | None = None,
 ) -> dict:
     """Select candidates, resolve to URIs, and create/replace the playlist."""
-    rows = select_candidates(conn, account_id, since_months, min_plays, limit)
-    uris = resolve_uris(client, rows)
+    if not 1 <= limit <= 100:
+        raise ValueError("Throwback size must be between 1 and 100")
+    # One randomized pool without repeated sampling; stop searches at the target.
+    rows = select_candidates(conn, account_id, since_months, min_plays, None)
+    uris = resolve_uris(client, rows, limit=limit)
+    if not dry_run and len(uris) < limit:
+        raise RuntimeError(
+            f"Only {len(uris)}/{limit} unique tracks resolved; playlist unchanged"
+        )
     created = False
     replaced = 0
     if not dry_run:
