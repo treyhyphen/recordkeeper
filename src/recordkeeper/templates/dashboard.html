@@ -5,7 +5,7 @@
 
 <div class="cards">
   <div class="card"><div class="value">{{ counts.scrobbles }}</div><div class="label">Scrobbles</div></div>
-  <div class="card"><div class="value">{{ counts.artists }}</div><div class="label">Artists</div></div>
+  <div class="card"><div class="value">{{ "{:,}".format(counts.artists) }}</div><div class="label">Artists in listening history</div></div>
   <div class="card"><div class="value">{{ counts.tracks }}</div><div class="label">Tracks</div></div>
   <div class="card"><div class="value">{{ counts.playlists }}</div><div class="label">Playlists</div></div>
   <div class="card"><div class="value">{{ counts.saved_tracks }}</div><div class="label">Saved tracks</div></div>

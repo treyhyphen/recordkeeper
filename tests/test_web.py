@@ -24,7 +24,9 @@ class _Conn:
         return False
 
     def execute(self, sql, params=None):
-        if "count(*)" in sql:
+        if "AS scrobbles" in sql:
+            assert "count(DISTINCT artist_name) FROM scrobbles" in sql
+            assert "count(*) FROM artists" not in sql
             return _Res(
                 {
                     "scrobbles": 5,
@@ -81,6 +83,7 @@ def test_dashboard_renders(monkeypatch):
     assert r.status_code == 200
     assert "King Buffalo" in r.text
     assert "Scrobbles" in r.text
+    assert "Artists in listening history" in r.text
 
 
 def test_support_renders(monkeypatch):

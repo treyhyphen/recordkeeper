@@ -62,7 +62,7 @@ def dashboard(request: Request):
             """
             SELECT
               (SELECT count(*) FROM scrobbles)             AS scrobbles,
-              (SELECT count(*) FROM artists)               AS artists,
+              (SELECT count(DISTINCT artist_name) FROM scrobbles) AS artists,
               (SELECT count(*) FROM tracks)                AS tracks,
               (SELECT count(*) FROM playlists)             AS playlists,
               (SELECT count(*) FROM saved_tracks)          AS saved_tracks,
