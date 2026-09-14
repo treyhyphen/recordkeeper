@@ -159,10 +159,27 @@ overrides (`purchased`, `snoozed`, `dismissed`, etc.).
 `recordkeeper support-artists.timer` refreshes daily at 04:30 UTC. Note: `plex_items.artist_name`
 must be populated for `entity_type='artist'` rows (the ownership join keys on it).
 
+## Playlist overlap and reliability
+
+`/overlap` is read-only and account-scoped. Compare current matching snapshot IDs
+only; missing/stale contents are unknown, not empty. Song sets use Spotify URIs,
+artist sets use Unicode-preserving casefolded names. Jaccard = shared/union;
+containment is directional. Combine suggestions require at least five shared
+songs and 80% containment in either direction, never trigger provider writes.
+Genres are explicitly unavailable until a genre-enrichment source is implemented.
+The page displays the top 100 matching pairs and full coverage counts.
+
+Throwback now walks one randomized eligible pool until the requested number of
+unique Spotify URIs resolves. Missing/duplicate matches use another candidate;
+provider errors abort and an exhausted pool never replaces with a short playlist.
+Likes with missing artist/title are marked skipped before any Last.fm request;
+`sync_ledger.target_key` is required even for invalid-input skips. Those records
+require explicit review/reset if provider metadata is repaired later.
+
 ## Web UI
 
-`recordkeeper serve` runs a read-only FastAPI + Jinja2 web UI (dense UniFi-style:
-dark sidebar, compact tables, status dots, monospace values). Pages: dashboard
+`recordkeeper serve` runs a read-only FastAPI + Jinja2 web UI (purple music-inspired theme:
+dark sidebar, rounded cards, compact tables, status dots). Pages: dashboard
 (counts + top artists + recent scrobbles), scrobbles, playlists, support-artists,
 vinyl. Each route opens a short-lived Postgres connection (reads `DATABASE_URL`).
 Deployment: `recordkeeper-web.service` binds `0.0.0.0:8000`; toolbox UFW needs an
