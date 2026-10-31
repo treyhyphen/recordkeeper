@@ -108,7 +108,7 @@ def test_sync_throwback_apply_creates_when_no_id():
 
     conn = _Conn([_ROW])
     client = _Client()
-    result = sync_throwback(conn, 7, client, dry_run=False)
+    result = sync_throwback(conn, 7, client, dry_run=False, limit=1)
     assert result["created"] is True
     assert result["replaced"] == 1
     assert result["playlist_id"] == "pl1"
@@ -136,7 +136,9 @@ def test_sync_throwback_apply_reuses_existing_id():
 
     conn = _Conn([_ROW])
     client = _Client()
-    result = sync_throwback(conn, 7, client, dry_run=False, playlist_id="pl-existing")
+    result = sync_throwback(
+        conn, 7, client, dry_run=False, playlist_id="pl-existing", limit=1
+    )
     assert result["created"] is False
     assert result["playlist_id"] == "pl-existing"
     assert client.replaced_args[0] == "playlists/pl-existing/items"

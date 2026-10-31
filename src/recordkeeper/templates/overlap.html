@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Recordkeeper · Playlist overlap{% endblock %}
+{% block content %}
+<h1>Same songs, different sleeves</h1>
+<p class="muted">Find shared favourites and playlists worth combining. Recommendations only — nothing is changed.</p>
+<form method="get"><label for="account">Spotify account</label>
+<select name="account_id" id="account">{% for a in accounts %}<option value="{{ a.id }}" {% if a.id == selected %}selected{% endif %}>{{ a.username }}</option>{% endfor %}</select> <button type="submit">Compare playlists</button></form>
+<p>{{ data.available }} / {{ data.total }} playlists have a current snapshot. Showing {{ pairs|length }} of {{ data.pairs|length }} matching pairs, ranked by song overlap.</p>
+<p class="muted">Overall = shared ÷ union. A in B = percentage of A also in B (and vice versa). Repeated entries count once; songs match by Spotify URI, artists by name. Genre comparison is unavailable: genre data has not been collected.</p>
+<div class="panel" style="overflow-x:auto"><table>
+<thead><tr><th>Playlist A / B</th><th>Shared songs</th><th>Song overlap</th><th>A in B</th><th>B in A</th><th>Artist overlap</th><th>Suggestion</th></tr></thead>
+<tbody>{% for p in pairs %}<tr><td>{{ p.a.name }}<br><span class="muted">{{ p.b.name }}</span></td><td>{{ p.songs.shared }}</td><td>{{ '%.1f'|format(p.songs.overall) }}%</td><td>{{ '%.1f'|format(p.songs.a_in_b) }}%</td><td>{{ '%.1f'|format(p.songs.b_in_a) }}%</td><td>{{ '%.1f'|format(p.artists.overall) }}%</td><td>{% if p.candidate %}<span class="badge badge-suggested">Consider combining</span>{% else %}—{% endif %}</td></tr>{% else %}<tr><td colspan="7">No shared songs or artists in the available snapshots.</td></tr>{% endfor %}</tbody>
+</table></div>
+<p class="muted">Combine candidates share at least 5 songs and have at least 80% containment in one direction. Review the playlists' purpose before combining.</p>
+<details><summary>Unavailable or stale snapshots ({{ data.unavailable|length }})</summary><p>Excluded, not treated as empty. Spotify may restrict access to followed playlists.</p><ul>{% for p in data.unavailable %}<li>{{ p.name }}</li>{% endfor %}</ul></details>
+{% endblock %}

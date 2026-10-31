@@ -139,11 +139,26 @@ def sync_loves(
         (spotify_account_id, lastfm_account_id, TASK, limit),
     ).fetchall()
 
-    loved = corrected = failed = 0
+    loved = corrected = failed = skipped = 0
     for row in rows:
         artist = _primary_artist(row["artist_names"])
         title = row["track_name"]
         source = row["provider_uri"]
+        if not (artist and artist.strip() and title and title.strip()):
+            skipped += 1
+            print(f"  SKIPPED {source}: missing artist or title")
+            if not dry_run:
+                conn.execute(
+                    """INSERT INTO sync_ledger
+                    (account_id, task_type, source_key, target_key, status, last_error)
+                    VALUES (%s, %s, %s, '', 'skipped', 'Missing artist or title')
+                    ON CONFLICT (account_id, task_type, source_key) DO UPDATE
+                    SET status = 'skipped', last_error = EXCLUDED.last_error
+                    """,
+                    (lastfm_account_id, TASK, source),
+                )
+                conn.commit()
+            continue
         resolved = title
         if correct is not None:
             try:
@@ -211,4 +226,9 @@ def sync_loves(
             conn.commit()
         time.sleep(delay)
 
-    return {"candidates": loved, "corrected": corrected, "failed": failed}
+    return {
+        "candidates": loved,
+        "corrected": corrected,
+        "failed": failed,
+        "skipped": skipped,
+    }
