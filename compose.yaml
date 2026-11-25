@@ -1,11 +1,24 @@
 # Recordkeeper services. PostgreSQL is the canonical data store.
 # The data directory is a bind mount on the root LV (23 GiB free), NOT the
 # default /var/lib/docker volume path (which sits on the tight /var LV).
+#
+# Image choice: the Debian-based image, not postgres:16-alpine. Alpine's musl
+# libc hit a reproducible startup hang after an unclean shutdown (the
+# entrypoint's root->postgres gosu privilege drop never completed, container
+# spun at 100% CPU for days with zero Postgres log output) and, once gosu was
+# bypassed by running directly as the postgres uid, a second musl-specific
+# failure during crash recovery ("could not signal for checkpoint: Permission
+# denied"). The Debian/glibc image recovered from the same unclean-shutdown
+# state in <1s with no special handling. Run directly as the image's postgres
+# uid/gid (999:999, verify with `docker run --rm postgres:16 id postgres` if
+# this ever changes upstream) so no root->non-root privilege drop is needed at
+# all; `chown -R 999:999` the bind-mounted data dir once when migrating.
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:16
     container_name: recordkeeper-db
     restart: unless-stopped
+    user: "999:999"
     environment:
       POSTGRES_DB: recordkeeper
       POSTGRES_USER: recordkeeper
